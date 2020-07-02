@@ -1,5 +1,7 @@
 import ijson
 
+print('Loaded local dev copy of autoTigerGraph!')
+
 def get_first(filename):
 
     with open(filename, 'r') as f:
@@ -12,17 +14,17 @@ def get_first(filename):
     return first, fields
 
 
-def guess_vertex(json_object, vertex_name, guess_fields=None):
+def vertex_from_json(json_object, vertex_name, fields=None):
 
-    if guess_fields == None:
-        guess_fields = json_object.keys()
+    if fields == None:
+        fields = json_object.keys()
     
     type_translate = {'str': 'STRING', 'dict': 'STRING', 'float': 'DOUBLE', 
                       'bool': 'BOOL', 'int': 'INT'}
 
     gsql_cmd  = 'CREATE VERTEX ' + vertex_name + ' (PRIMARY_ID ' 
     
-    for field in guess_fields:
+    for field in fields:
 
         if field == 'date':
             gsql_cmd += 'date_time' + ' '
@@ -35,7 +37,6 @@ def guess_vertex(json_object, vertex_name, guess_fields=None):
 
     return gsql_cmd[:-2] + ')'
 
-
 def problem_fields_to_str(json_object):
 
     for key, value in json_object.items():
@@ -47,10 +48,11 @@ def problem_fields_to_str(json_object):
 
     return json_object
 
-def upsert_json(filename, conn, vertex_name, primary_id, n):
 
-    ids = ['']*n
-    bodies = ['']*n
+def upsert_json_vertices(filename, conn, vertex_name, primary_id, batch_size, max_verts):
+
+    ids = ['']*batch_size
+    bodies = ['']*batch_size
 
     with open(filename, 'r') as f:
         objects = ijson.items(f, '', multiple_values=True, use_float=True)
@@ -64,7 +66,9 @@ def upsert_json(filename, conn, vertex_name, primary_id, n):
                 bodies[i]=problem_fields_to_str(json_object)
                 count += 1
                 i += 1
-                if i%n == 0:
+                if count >= max_verts:
+                    break
+                if i%batch_size == 0:
                     conn.upsertVertices(vertex_name, list(zip(ids, bodies)))
                     i = 0
 
@@ -75,16 +79,40 @@ def upsert_json(filename, conn, vertex_name, primary_id, n):
 
     return count
 
+def upsert_json_edges(filename, conn, from_name, from_field, edge_name, 
+                      to_name, to_field, batch_size, max_edges, split_string=', '):
 
-def create_vertex(shell, json_object, vertex_name, graph_name):
+    froms = ['']*batch_size
+    tos = ['']*batch_size
 
-    print(shell.gsql('''
-    drop graph {}
-    drop vertex {}
-    {}
-    create graph {} (*)
-    ls'''.format(graph_name,
-                 vertex_name, 
-                 guess_vertex(json_object=json_object, 
-                                  vertex_name=vertex_name),
-                 graph_name)))
+    with open(filename, 'r') as f:
+        objects = ijson.items(f, '', multiple_values=True, use_float=True)
+
+        i = 0
+        count = 0
+        for json_object in objects:
+
+            if json_object:
+                
+                json_froms = json_object[from_field].split(split_string)
+                jsom_tos = json_object[to_field].split(split_string)
+                
+                if len(json_from) > 1:
+                    json_to *= len(json_form)
+                elif len(json_to) > 1:
+                    json_from *= len(json_to)
+          
+                for froms[i], tos[i] in zip(json_from, json_to):
+
+                    count += 1
+                    i += 1
+                    if count >= max_edges:
+                        break
+                    if i%n == 0:
+                        conn.upsertEdges(from_name, edge_name, to_name, list(zip(froms, tos)))
+                        i = 0
+
+            else:
+                break
+
+    return count

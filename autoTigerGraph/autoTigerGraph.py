@@ -17,14 +17,14 @@ def get_first(filename):
 def vertex_from_json(json_object, vertex_name, fields=None):
 
     if fields == None:
-        fields = json_object.keys()
+        fields = list(json_object.keys())
     
     type_translate = {'str': 'STRING', 'dict': 'STRING', 'float': 'DOUBLE', 
                       'bool': 'BOOL', 'int': 'INT'}
 
-    gsql_cmd  = 'CREATE VERTEX ' + vertex_name + ' (PRIMARY_ID ' 
+    gsql_cmd  = 'VERTEX ' + vertex_name + ' (PRIMARY_ID ' 
     
-    for field in fields:
+    for field in [fields[0]]+fields:
 
         if field == 'date':
             gsql_cmd += 'date_time' + ' '

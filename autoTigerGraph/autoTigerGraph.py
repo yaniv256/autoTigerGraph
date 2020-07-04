@@ -1,6 +1,6 @@
 import ijson
 
-print('Loaded local dev copy of autoTigerGraph!')
+#print('Loaded local dev copy of autoTigerGraph!!')
 
 def get_first(filename):
 
@@ -62,7 +62,7 @@ def upsert_json_vertices(filename, conn, vertex_name, primary_id, batch_size, ma
         for json_object in objects:
 
             if json_object:
-                ids[i]=json_object.pop(primary_id)
+                ids[i]=json_object[primary_id]
                 bodies[i]=problem_fields_to_str(json_object)
                 count += 1
                 i += 1
@@ -95,20 +95,23 @@ def upsert_json_edges(filename, conn, from_name, from_field, edge_name,
             if json_object:
                 
                 json_froms = json_object[from_field].split(split_string)
-                jsom_tos = json_object[to_field].split(split_string)
+                json_tos = json_object[to_field].split(split_string)
                 
-                if len(json_from) > 1:
-                    json_to *= len(json_form)
-                elif len(json_to) > 1:
-                    json_from *= len(json_to)
-          
-                for froms[i], tos[i] in zip(json_from, json_to):
+                if len(json_froms) > 1:
+                    json_tos *= len(json_forms)
+                elif len(json_tos) > 1:
+                    json_froms *= len(json_tos)    
+                
+                for from_vert, to_vert in zip(json_froms, json_tos):
 
+                    froms[i] = from_vert
+                    tos[i] = to_vert
                     count += 1
                     i += 1
                     if count >= max_edges:
-                        break
-                    if i%n == 0:
+                        conn.upsertEdges(from_name, edge_name, to_name, list(zip(froms[:i], tos[:i])))
+                        return count
+                    if i%batch_size == 0:
                         conn.upsertEdges(from_name, edge_name, to_name, list(zip(froms, tos)))
                         i = 0
 
